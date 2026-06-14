@@ -1,0 +1,133 @@
+// RupeeTrack - Expense Tracker for Indian Salaried People
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(cuid())
+  name          String
+  email         String          @unique
+  password      String
+  monthlySalary Float           @default(0)
+  taxRegime     String          @default("new") // "old" or "new"
+  currency      String          @default("INR")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  categories    Category[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  goals         SavingsGoal[]
+  investments   Investment[]
+  bills         BillReminder[]
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String
+  type         String        // "income" or "expense"
+  icon         String        // lucide icon name
+  color        String        // hex color
+  isDefault    Boolean       @default(false)
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  amount        Float
+  type          String   // "income" or "expense"
+  description   String
+  date          DateTime
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRecurring   Boolean  @default(false)
+  recurringFreq String?  // "monthly", "weekly", "yearly"
+  tags          String?  // comma separated tags
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  amount     Float
+  month      Int      // 1-12
+  year       Int
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([categoryId, month, year])
+}
+
+model SavingsGoal {
+  id             String               @id @default(cuid())
+  name           String
+  targetAmount   Float
+  currentAmount  Float                @default(0)
+  deadline       DateTime?
+  icon           String               @default("🎯")
+  color          String               @default("#10b981")
+  userId         String
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  contributions  SavingsContribution[]
+}
+
+model SavingsContribution {
+  id        String      @id @default(cuid())
+  goalId    String
+  goal      SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  amount    Float
+  date      DateTime
+  note      String?
+  createdAt DateTime    @default(now())
+}
+
+model Investment {
+  id             String    @id @default(cuid())
+  name           String
+  type           String    // "pf", "ppf", "mutual_fund", "fd", "sip", "stocks", "nps", "other"
+  investedAmount Float
+  currentValue   Float
+  startDate      DateTime
+  maturityDate   DateTime?
+  returnRate     Float?
+  notes          String?
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model BillReminder {
+  id            String   @id @default(cuid())
+  name          String
+  amount        Float
+  dueDate       DateTime
+  category      String
+  isPaid        Boolean  @default(false)
+  isRecurring   Boolean  @default(false)
+  recurringFreq String?  // "monthly", "weekly", "yearly"
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
