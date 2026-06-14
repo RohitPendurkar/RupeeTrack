@@ -82,15 +82,25 @@ export async function GET(request: Request) {
       include: { category: true },
     })
 
-    const budgetOverview = await Promise.all(
-      budgets.map(async (budget) => {
-        const spent = await db.transaction.aggregate({
-          where: { categoryId: budget.categoryId, type: 'expense', userId: user.id, date: { gte: startDate, lt: endDate } },
+    const categoryIds = budgets.map(b => b.categoryId)
+    const spentByCategory = categoryIds.length > 0
+      ? await db.transaction.groupBy({
+          by: ['categoryId'],
+          where: {
+            categoryId: { in: categoryIds },
+            type: 'expense',
+            userId: user.id,
+            date: { gte: startDate, lt: endDate },
+          },
           _sum: { amount: true },
         })
-        return { ...budget, spent: spent._sum.amount || 0 }
-      })
-    )
+      : []
+
+    const spentMap = new Map(spentByCategory.map(b => [b.categoryId, b._sum.amount || 0]))
+    const budgetOverview = budgets.map(budget => ({
+      ...budget,
+      spent: spentMap.get(budget.categoryId) || 0,
+    }))
 
     const totalBudget = budgets.reduce((sum, b) => sum + b.amount, 0)
     const totalSpentOnBudget = budgetOverview.reduce((sum, b) => sum + b.spent, 0)

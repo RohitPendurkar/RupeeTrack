@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useAppStore } from "@/lib/store"
 import { formatINR, percentage } from "@/lib/helpers"
 import { motion } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, RefreshCw } from "lucide-react"
 import {
   Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card"
@@ -24,27 +26,57 @@ const fadeUp = {
 export function ReportsTab() {
   const { selectedMonth, selectedYear } = useAppStore()
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000)
 
     const loadData = async () => {
       try {
+        setError(null)
         const res = await fetch(`/api/dashboard?month=${selectedMonth}&year=${selectedYear}`, {
           signal: controller.signal,
         })
-        if (res.ok) {
-          const data = await res.json()
-          if (!controller.signal.aborted) setDashboard(data)
+        clearTimeout(timeoutId)
+        if (!controller.signal.aborted) {
+          if (res.ok) {
+            const data = await res.json()
+            setDashboard(data)
+            setError(null)
+          } else {
+            const errBody = await res.json().catch(() => ({}))
+            setError(errBody.error || `Request failed (${res.status})`)
+          }
         }
       } catch (err) {
-        if (!controller.signal.aborted) console.error("Dashboard fetch error:", err)
+        clearTimeout(timeoutId)
+        if (!controller.signal.aborted) {
+          const message = err instanceof DOMException && err.name === "AbortError"
+            ? "Request timed out. Please try again."
+            : "Network error. Please check your connection."
+          setError(message)
+        }
       }
     }
 
     loadData()
-    return () => controller.abort()
-  }, [selectedMonth, selectedYear])
+    return () => { clearTimeout(timeoutId); controller.abort() }
+  }, [selectedMonth, selectedYear, retryCount])
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <AlertCircle className="h-10 w-10 text-destructive mb-3" />
+        <p className="text-destructive font-medium mb-1">Failed to load reports</p>
+        <p className="text-sm text-muted-foreground mb-4">{error}</p>
+        <Button variant="outline" size="sm" onClick={() => setRetryCount(c => c + 1)}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+        </Button>
+      </div>
+    )
+  }
 
   if (!dashboard) {
     return (

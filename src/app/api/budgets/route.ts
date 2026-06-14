@@ -20,20 +20,25 @@ export async function GET(request: Request) {
     const startDate = new Date(year, month - 1, 1)
     const endDate = new Date(year, month, 1)
 
-    const budgetWithSpent = await Promise.all(
-      budgets.map(async (budget) => {
-        const spent = await db.transaction.aggregate({
+    const categoryIds = budgets.map(b => b.categoryId)
+    const spentByCategory = categoryIds.length > 0
+      ? await db.transaction.groupBy({
+          by: ['categoryId'],
           where: {
-            categoryId: budget.categoryId,
+            categoryId: { in: categoryIds },
             type: 'expense',
             userId: user.id,
             date: { gte: startDate, lt: endDate },
           },
           _sum: { amount: true },
         })
-        return { ...budget, spent: spent._sum.amount || 0 }
-      })
-    )
+      : []
+
+    const spentMap = new Map(spentByCategory.map(b => [b.categoryId, b._sum.amount || 0]))
+    const budgetWithSpent = budgets.map(budget => ({
+      ...budget,
+      spent: spentMap.get(budget.categoryId) || 0,
+    }))
 
     return NextResponse.json(budgetWithSpent)
   } catch (error) {
