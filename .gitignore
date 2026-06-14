@@ -58,7 +58,7 @@ test
 prompt
 
 server.log
-# Skills directory
+# Skills & agents
 /skills/
 .agents
 skills-lock.json
