@@ -34,7 +34,7 @@ export function DashboardTab() {
 
   useEffect(() => {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 15000)
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
 
     const loadData = async () => {
       try {

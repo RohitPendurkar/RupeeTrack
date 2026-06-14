@@ -105,7 +105,7 @@ export function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </DialogDescription>
         </DialogHeader>
         {authMode === "login" ? (
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form id="login-form" onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -137,11 +137,19 @@ export function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
               <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Demo Account</span></div>
             </div>
-            <div className="bg-muted/50 rounded-xl p-3 text-sm">
-              <p className="text-muted-foreground text-center">
-                <span className="font-mono text-xs">{demoEmail}</span> / <span className="font-mono text-xs">{demoPassword}</span>
-              </p>
-            </div>
+            <Button type="button" variant="outline" className="w-full text-sm"
+              disabled={authLoading}
+              onClick={() => {
+                setLoginForm({ email: demoEmail, password: demoPassword })
+                setTimeout(() => {
+                  const form = document.querySelector<HTMLFormElement>("#login-form")
+                  form?.requestSubmit()
+                }, 50)
+              }}>
+              <span className="font-mono text-xs truncate">{demoEmail}</span>
+              <span className="mx-1.5 text-muted-foreground">/</span>
+              <span className="font-mono text-xs">{demoPassword}</span>
+            </Button>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="space-y-4">
