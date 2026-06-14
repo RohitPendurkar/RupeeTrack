@@ -1,9 +1,18 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { cookies } from "next/headers"
+import { getToken } from "next-auth/jwt"
 
 export async function getCurrentUser() {
-  const session = await getServerSession(authOptions)
-  return session?.user
+  try {
+    const cookieStore = await cookies()
+    const token = await getToken({
+      req: { cookies: Object.fromEntries(cookieStore.getAll().map(c => [c.name, c.value])) } as any,
+      secret: process.env.NEXTAUTH_SECRET,
+    })
+    if (!token?.email) return null
+    return { id: token.id as string, name: token.name as string, email: token.email as string }
+  } catch {
+    return null
+  }
 }
 
 export async function requireAuth() {
